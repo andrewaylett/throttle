@@ -16,7 +16,7 @@ class ThrottleTest {
     void testSuccess() throws Exception {
         var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
         Callable<String> callable = () -> "ok";
-        var result = throttle.attempt(callable);
+        var result = throttle.checkedAttempt(callable);
         Assertions.assertEquals("ok", result);
     }
 
@@ -24,7 +24,7 @@ class ThrottleTest {
     void testFailure() {
         var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
         Callable<String> callable = () -> { throw new IllegalArgumentException("fail"); };
-        Assertions.assertThrows(IllegalArgumentException.class, () -> throttle.attempt(callable));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> throttle.checkedAttempt(callable));
     }
 
     @Test
@@ -39,11 +39,11 @@ class ThrottleTest {
 
         // First call fails, so failures=1
         try {
-            throttle.attempt(() -> { throw new IllegalStateException("fail"); });
+            throttle.checkedAttempt(() -> { throw new IllegalStateException("fail"); });
         } catch (Exception ignored) {}
 
         // Second call should be throttled
-        Assertions.assertThrows(ThrottleException.class, () -> throttle.attempt(() -> "should not run"));
+        Assertions.assertThrows(ThrottleException.class, () -> throttle.checkedAttempt(() -> "should not run"));
     }
 
     static class DummyClock extends Clock {
@@ -61,24 +61,87 @@ class ThrottleTest {
         var throttle = new Throttle(2.0, clock, new Random(42));
 
         // Success and failure
-        throttle.attempt(() -> "ok");
+        throttle.checkedAttempt(() -> "ok");
         try {
-            throttle.attempt(() -> { throw new RuntimeException("fail"); });
+            throttle.checkedAttempt(() -> { throw new RuntimeException("fail"); });
         } catch (RuntimeException ignored) {}
 
         // Advance clock far enough for entries to expire (ThrottleEntry uses 60s delay)
         clock.advanceSeconds(61);
 
         // Next attempt should clear expired entries, so counters reset
-        throttle.attempt(() -> "ok"); // Should not throw
+        throttle.checkedAttempt(() -> "ok"); // Should not throw
 
         // If we throw again, failures should be 1, and throttling logic should work as normal
         try {
-            throttle.attempt(() -> { throw new RuntimeException("fail2"); });
+            throttle.checkedAttempt(() -> { throw new RuntimeException("fail2"); });
         } catch (RuntimeException ignored) {}
 
         // Advance clock again to expire
         clock.advanceSeconds(61);
-        throttle.attempt(() -> "ok"); // Should not throw
+        throttle.checkedAttempt(() -> "ok"); // Should not throw
+    }
+
+    @Test
+    void testAttemptRunnableSuccess() {
+        var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
+        final boolean[] ran = {false};
+        throttle.attempt(() -> ran[0] = true);
+        Assertions.assertTrue(ran[0]);
+    }
+
+    @Test
+    void testAttemptRunnableThrows() {
+        var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
+        Assertions.assertThrows(IllegalArgumentException.class, () ->
+            throttle.attempt(() -> { throw new IllegalArgumentException("fail"); })
+        );
+    }
+
+    @Test
+    void testAttemptSupplierSuccess() {
+        var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
+        String result = throttle.attempt(() -> "supplied");
+        Assertions.assertEquals("supplied", result);
+    }
+
+    @Test
+    void testAttemptSupplierThrows() {
+        var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
+        Assertions.assertThrows(IllegalStateException.class, () ->
+            throttle.attempt(() -> { throw new IllegalStateException("fail"); })
+        );
+    }
+
+    @Test
+    void testAttemptRunnableThrottleException() {
+        var throttle = new Throttle(1.0, Clock.systemUTC(), new Random() {
+            @Override
+            public double nextDouble() {
+                return 1.0;
+            }
+        });
+        try {
+            throttle.attempt(() -> { throw new RuntimeException("fail"); });
+        } catch (RuntimeException ignored) {}
+        Assertions.assertThrows(ThrottleException.class, () ->
+            throttle.attempt(() -> {})
+        );
+    }
+
+    @Test
+    void testAttemptSupplierThrottleException() {
+        var throttle = new Throttle(1.0, Clock.systemUTC(), new Random() {
+            @Override
+            public double nextDouble() {
+                return 1.0;
+            }
+        });
+        try {
+            throttle.attempt(() -> { throw new RuntimeException("fail"); });
+        } catch (RuntimeException ignored) {}
+        Assertions.assertThrows(ThrottleException.class, () ->
+            throttle.attempt(() -> "should not run")
+        );
     }
 }

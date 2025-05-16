@@ -6,6 +6,7 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 public class Throttle {
     private final double overhead;
@@ -25,7 +26,7 @@ public class Throttle {
         this(2.0, Clock.systemUTC(), new SecureRandom());
     }
 
-    public <T> T attempt(Callable<T> callable) throws Exception {
+    public <T> T checkedAttempt(Callable<T> callable) throws Exception {
         ThrottleEntry old;
         T result;
         while ((old = queue.poll()) != null) {
@@ -56,5 +57,28 @@ public class Throttle {
         successes.incrementAndGet();
         queue.offer(new ThrottleEntry(true, clock));
         return result;
+    }
+
+    public void attempt(Runnable runnable) {
+        try {
+            checkedAttempt(() -> {
+                runnable.run();
+                return null;
+            });
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new UnexpectedCheckedException(e);
+        }
+    }
+
+    public <T> T attempt(Supplier<T> supplier) {
+        try {
+            return checkedAttempt(supplier::get);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new UnexpectedCheckedException(e);
+        }
     }
 }
