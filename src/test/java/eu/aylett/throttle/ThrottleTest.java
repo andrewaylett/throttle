@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 @SuppressWarnings("UnsecureRandomNumberGeneration")
 class ThrottleTest {
@@ -15,8 +16,7 @@ class ThrottleTest {
     @Test
     void testSuccess() throws Exception {
         var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
-        Callable<String> callable = () -> "ok";
-        var result = throttle.checkedAttempt(callable);
+        var result = throttle.checkedAttempt(() -> "ok");
         Assertions.assertEquals("ok", result);
     }
 
@@ -40,9 +40,10 @@ class ThrottleTest {
         // First call fails, so failures=1
         try {
             throttle.checkedAttempt(() -> { throw new IllegalStateException("fail"); });
+            throttle.checkedAttempt(() -> { throw new IllegalStateException("fail"); });
         } catch (Exception ignored) {}
 
-        // Second call should be throttled
+        // Third call should be throttled
         Assertions.assertThrows(ThrottleException.class, () -> throttle.checkedAttempt(() -> "should not run"));
     }
 
@@ -57,7 +58,7 @@ class ThrottleTest {
 
     @Test
     void testEntryExpiryWithDummyClock() throws Exception {
-        DummyClock clock = new DummyClock(Instant.parse("2024-01-01T00:00:00Z"));
+        var clock = new DummyClock(Instant.parse("2024-01-01T00:00:00Z"));
         var throttle = new Throttle(2.0, clock, new Random(42));
 
         // Success and failure
@@ -85,7 +86,7 @@ class ThrottleTest {
     @Test
     void testAttemptRunnableSuccess() {
         var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
-        final boolean[] ran = {false};
+        final var ran = new boolean[]{false};
         throttle.attempt(() -> ran[0] = true);
         Assertions.assertTrue(ran[0]);
     }
@@ -101,7 +102,7 @@ class ThrottleTest {
     @Test
     void testAttemptSupplierSuccess() {
         var throttle = new Throttle(2.0, Clock.systemUTC(), new Random(42));
-        String result = throttle.attempt(() -> "supplied");
+        var result = throttle.attempt(() -> "supplied");
         Assertions.assertEquals("supplied", result);
     }
 
@@ -123,6 +124,7 @@ class ThrottleTest {
         });
         try {
             throttle.attempt(() -> { throw new RuntimeException("fail"); });
+            throttle.attempt(() -> { throw new RuntimeException("fail"); });
         } catch (RuntimeException ignored) {}
         Assertions.assertThrows(ThrottleException.class, () ->
             throttle.attempt(() -> {})
@@ -139,9 +141,86 @@ class ThrottleTest {
         });
         try {
             throttle.attempt(() -> { throw new RuntimeException("fail"); });
+            throttle.attempt(() -> { throw new RuntimeException("fail"); });
         } catch (RuntimeException ignored) {}
         Assertions.assertThrows(ThrottleException.class, () ->
             throttle.attempt(() -> "should not run")
         );
+    }
+
+    @Test
+    void testWrapRunnable() {
+        var throttle = new Throttle();
+        Runnable original = () -> {};
+        var wrapped = throttle.wrap(original);
+        Assertions.assertNotSame(original, wrapped);
+        wrapped.run(); // Should not throw
+    }
+
+    @Test
+    void testWrapSupplier() {
+        var throttle = new Throttle();
+        Supplier<String> original = () -> "wrapped";
+        var wrapped = throttle.wrap(original);
+        Assertions.assertNotSame(original, wrapped);
+        Assertions.assertEquals("wrapped", wrapped.get());
+    }
+
+    @Test
+    void testWrapMultipleFunctionsWithSingleThrottle() {
+        var throttle = new Throttle();
+
+        final var counter = new int[]{0};
+        Runnable r1 = () -> counter[0]++;
+        Runnable r2 = () -> counter[0] += 2;
+        Supplier<Integer> s1 = () -> counter[0] * 10;
+
+        var wrappedR1 = throttle.wrap(r1);
+        var wrappedR2 = throttle.wrap(r2);
+        var wrappedS1 = throttle.wrap(s1);
+
+        wrappedR1.run();
+        Assertions.assertEquals(1, counter[0]);
+        wrappedR2.run();
+        Assertions.assertEquals(3, counter[0]);
+        int result = wrappedS1.get();
+        Assertions.assertEquals(30, result);
+
+        // All wrapped functions should still work after several invocations
+        wrappedR1.run();
+        wrappedR2.run();
+        Assertions.assertEquals(6, counter[0]);
+        Assertions.assertEquals(60, wrappedS1.get());
+    }
+
+    @Test
+    void testWrapFunctionsThrottleTogether() {
+        // Use a throttle that will throttle after a failure
+        var throttle = new Throttle(1.0, Clock.systemUTC(), new Random() {
+            @Override
+            public double nextDouble() {
+                return 1.0;
+            }
+        });
+
+        Runnable fail = () -> { throw new RuntimeException("fail"); };
+        Runnable ok = () -> {};
+        var wrappedFail = throttle.wrap(fail);
+        var wrappedOk = throttle.wrap(ok);
+
+        // Cause a failure
+        try {
+            wrappedFail.run();
+            wrappedFail.run();
+        } catch (RuntimeException ignored) {}
+
+        // Now both wrapped lambdas should be throttled
+        Assertions.assertThrows(ThrottleException.class, wrappedOk::run);
+        Assertions.assertThrows(ThrottleException.class, wrappedFail::run);
+
+        // Same for Supplier
+        Supplier<String> supplier = () -> "hi";
+        var wrappedSupplier = throttle.wrap(supplier);
+        Assertions.assertThrows(ThrottleException.class, wrappedSupplier::get);
     }
 }
