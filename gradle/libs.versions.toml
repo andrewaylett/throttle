@@ -1,0 +1,36 @@
+[versions]
+arcmutate = "1.2.2"
+checkerframework = "3.49.2"
+checkstyle = "10.23.1"
+hamcrest = "3.0"
+jetbrains = "26.0.2"
+jspecify = "1.0.0"
+junit = "5.12.2"
+logback = "1.5.18"
+mockito = "5.17.0"
+pitest = "1.19.1"
+pitest-accelerator-junit5 = "1.0.6"
+pitest-git-plugin = "1.1.4"
+pitest-junit5-plugin = "1.2.2"
+pitest-kotlin-plugin = "1.1.6"
+slf4j = "2.0.17"
+spotbugs = "4.9.3"
+
+[libraries]
+arcmutate-base = { module = "com.groupcdg.arcmutate:base", version.ref = "arcmutate" }
+checkerframework = { module = "org.checkerframework:checker", version.ref = "checkerframework" }
+checkerframework-qual = { module = "org.checkerframework:checker-qual", version.ref = "checkerframework" }
+hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+pitest = { module = "org.pitest:pitest", version.ref = "pitest" }
+pitest-accelerator-junit5 = { module = "com.groupcdg.pitest:pitest-accelerator-junit5", version.ref = "pitest-accelerator-junit5" }
+pitest-git-plugin = { module = "com.groupcdg:pitest-git-plugin", version.ref = "pitest-git-plugin" }
+pitest-junit5-plugin = { module = "org.pitest:pitest-junit5-plugin", version.ref = "pitest-junit5-plugin" }
+pitest-kotlin-plugin = { module = "com.groupcdg.pitest:pitest-kotlin-plugin", version.ref = "pitest-kotlin-plugin" }
+puppycrawl-checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugs" }

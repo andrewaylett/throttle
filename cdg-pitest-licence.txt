@@ -1,0 +1,7 @@
+#Licence file for pitest extensions
+#Mon Oct 23 10:04:21 BST 2023
+expires=23/10/2025
+keyVersion=1
+signature=CrvmcRaYe6/1+L6Z2KRI/mBMjjy+Ueq5yWQaBsIz1D/Oc49RSLeH43YoyEvlRrVRqZ8j0GlV6C4cG+Lbjf8uC6O2MD4cacGObaFgjYrnC6khdQqbS2B4MM5v9LPQHwyzXwzE1e36+zJLADpjqC5Ug6DRsZx/isC9pl+en0hzY3o\=
+packages=eu.aylett.*
+type=OSSS
