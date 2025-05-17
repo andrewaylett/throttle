@@ -61,7 +61,6 @@ dependencies {
   pitest(libs.logback.classic)
   pitest(libs.pitest.accelerator.junit5)
   pitest(libs.pitest.git.plugin)
-  pitest(libs.pitest.kotlin.plugin)
   pitest(libs.slf4j.api)
 
   internal(libs.junit.jupiter)

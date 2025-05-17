@@ -17,7 +17,14 @@
 package eu.aylett.throttle;
 
 public class ThrottleException extends RuntimeException {
-  public ThrottleException(String message) {
-    super(message);
+  public final long successes;
+  public final long failures;
+  public final double ratio;
+
+  public ThrottleException(String message, long successes, long failures, double ratio) {
+    super(message + " (last 60s: " + successes + " successes, " + failures + " failures, allowed ratio " + ratio + ")");
+    this.successes = successes;
+    this.failures = failures;
+    this.ratio = ratio;
   }
 }

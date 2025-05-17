@@ -14,6 +14,24 @@
  * limitations under the License.
  */
 
+/**
+ * As a service client, there's little point in sending requests to the service
+ * that we can be reasonably sure will fail.
+ * <p>
+ * Once we start seeing remote failures, we'll only send 2x the number of
+ * successes observed over the past minute.
+ * </p>
+ * <p>
+ * One instance of Throttle should be used for each distinct fault zone
+ * (normally each service) you call. You <i>should</i> use the same instance for
+ * different methods called on the same service.
+ * </p>
+ * <p>
+ * I recommend putting the Throttle around service-specific logic, rather than
+ * at the point of actually making a network call. There's no point in setting
+ * up the call only to decide to throttle it.
+ * </p>
+ */
 @NullMarked
 package eu.aylett.throttle;
 

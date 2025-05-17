@@ -29,6 +29,10 @@ import java.util.function.Supplier;
 
 import static eu.aylett.throttle.SneakyThrows.sneakyThrow;
 
+/**
+ * A simple throttle that allows you to call a method, but only if the throttle
+ * limit is not exceeded.
+ */
 public class Throttle {
   private final double overhead;
   private final InstantSource clock;
@@ -37,59 +41,107 @@ public class Throttle {
   private final AtomicLong successes = new AtomicLong(0);
   private final AtomicLong failures = new AtomicLong(0);
 
+  /**
+   * A fully configurable throttle.
+   * <p>
+   * You probably don't need to call this constructor
+   * </p>
+   *
+   * @param overhead
+   *          The ratio of attempts we'll make compared to successes we see.
+   *          Defaults to 2.0 on the no-arg constructor.
+   * @param clock
+   *          Used to get the current time, so we can expire old entries. Exposed
+   *          for testing.
+   * @param randomSource
+   *          Used to determine whether we fail a particular attempt. Exposed for
+   *          testing.
+   */
   public Throttle(double overhead, InstantSource clock, DoubleSupplier randomSource) {
     this.overhead = overhead;
     this.clock = clock;
     this.randomSource = randomSource;
   }
 
+  /**
+   * Throttle with a default overhead of 2.0, using the system clock and a secure
+   * random number generator.
+   */
   public Throttle() {
     this(2.0, Clock.systemUTC(), new SecureRandom()::nextDouble);
   }
 
+  /**
+   * Either call the callable, or throw a ThrottleException if the throttle limit
+   * is exceeded.
+   *
+   * @throws ThrottleException
+   *           if the throttle limit is exceeded, or any exception thrown by the
+   *           callable.
+   */
   public <T> T checkedAttempt(Callable<T> callable) throws Exception {
     ThrottleEntry old;
     T result;
+    var deltaSuccesses = 0L;
+    var deltaFailures = 0L;
     while ((old = queue.poll()) != null) {
       if (old.success) {
-        successes.decrementAndGet();
+        deltaSuccesses--;
       } else {
-        failures.decrementAndGet();
+        deltaFailures--;
       }
     }
 
+    // We always update the counts after polling the queue and before adding to it
+    // so that the count will always be no less than the number of entries in the
+    // queue
+    var instantaneousFailures = failures.addAndGet(deltaFailures);
+    var instantaneousSuccesses = successes.addAndGet(deltaSuccesses);
+
+    // Should hold by construction.
+    assert instantaneousFailures >= 0;
+    assert instantaneousSuccesses >= 0;
+
     var success = false;
     try {
-      var f = failures.getAcquire();
-      if (f > 0) {
-        var s = successes.getAcquire();
+      if (instantaneousFailures > 0) {
         // We want a non-zero chance of running, even if we've not seen any successes
         // for a while
-        var ratio = overhead * ((overhead + s) / (s + f));
+        var ratio = overhead * ((overhead + instantaneousSuccesses) / (instantaneousSuccesses + instantaneousFailures));
         if (ratio <= 1.0) {
           var sample = randomSource.getAsDouble();
           if (sample >= ratio) {
-            // Don't record this as a failure, we didn't even try
-            success = true;
-            throw new ThrottleException("Throttle limit exceeded");
+            // Counts as a failure, because we want to let through a proportion of total
+            // attempts including throttles
+            // to let through twice the successes seen.
+            throw new ThrottleException("Throttle limit exceeded", instantaneousSuccesses, instantaneousFailures,
+                ratio);
           }
         }
       }
       result = callable.call();
 
       success = true;
-      successes.incrementAndGet();
+      successes.getAndIncrement();
       queue.offer(new ThrottleEntry(true, clock));
 
       return result;
     } finally {
       if (!success) {
-        failures.incrementAndGet();
+        failures.getAndIncrement();
         queue.offer(new ThrottleEntry(false, clock));
       }
     }
   }
 
+  /**
+   * Call the runnable, or throw a ThrottleException if the throttle limit is
+   * exceeded.
+   *
+   * @throws ThrottleException
+   *           if the throttle limit is exceeded, or any exception thrown by the
+   *           runnable.
+   */
   public void attempt(Runnable runnable) {
     try {
       checkedAttempt(() -> {
@@ -101,6 +153,14 @@ public class Throttle {
     }
   }
 
+  /**
+   * Call the supplier, or throw a ThrottleException if the throttle limit is
+   * exceeded.
+   *
+   * @throws ThrottleException
+   *           if the throttle limit is exceeded, or any exception thrown by the
+   *           supplier.
+   */
   public <T> T attempt(Supplier<T> supplier) {
     try {
       return checkedAttempt(supplier::get);
@@ -109,18 +169,35 @@ public class Throttle {
     }
   }
 
+  /**
+   * Call the callable, or throw a ThrottleException if the throttle limit is
+   * exceeded.
+   *
+   * @throws ThrottleException
+   *           if the throttle limit is exceeded, or any exception thrown by the
+   *           callable.
+   */
   public <T> Supplier<T> wrap(Supplier<T> supplier) {
     return () -> attempt(supplier);
   }
 
+  /**
+   * Wrap a Runnable so that when it's called, it may be throttled.
+   */
   public Runnable wrap(Runnable runnable) {
     return () -> attempt(runnable);
   }
 
+  /**
+   * Wrap a Function so that when it's called, it may be throttled.
+   */
   public <T, R> Function<T, R> wrap(Function<T, R> function) {
     return (T t) -> attempt(() -> function.apply(t));
   }
 
+  /**
+   * Wrap a BiFunction so that when it's called, it may be throttled.
+   */
   public <T, U, R> BiFunction<T, U, R> wrap(BiFunction<T, U, R> function) {
     return (T t, U u) -> attempt(() -> function.apply(t, u));
   }

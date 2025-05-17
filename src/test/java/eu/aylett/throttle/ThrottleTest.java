@@ -16,6 +16,7 @@
 
 package eu.aylett.throttle;
 
+import com.google.common.math.Stats;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -27,12 +28,16 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.InstantSource;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
@@ -304,6 +309,64 @@ class ThrottleTest {
   }
 
   @Test
+  @SuppressWarnings("return")
+  void soakTest() throws InterruptedException {
+    var baseInstant = Instant.parse("2024-01-01T00:00:00Z");
+    var startInstant = Instant.now();
+    // Clock that runs 3600x faster than real time
+    var fastClock = new InstantSource() {
+      @Override
+      public Instant instant() {
+        var sinceStart = startInstant.until(Instant.now(), ChronoUnit.NANOS);
+        return baseInstant.plusNanos(sinceStart * 3600);
+      }
+    };
+    var throttle = new Throttle(2.0, fastClock, new Random(42)::nextDouble);
+    var stopAt = baseInstant.plus(1, ChronoUnit.HOURS);
+    var random = new Random(43);
+
+    record Stats(int successes, int failures, int throttles) {
+    }
+
+    Callable<Stats> task = () -> {
+      var successes = 0;
+      var failures = 0;
+      var throttles = 0;
+      while (fastClock.instant().isBefore(stopAt)) {
+        try {
+          throttle.checkedAttempt(() -> {
+            // Simulate some work
+            Thread.sleep(1);
+            if (random.nextBoolean()) {
+              throw new RuntimeException("deliberate fail");
+            }
+            return null;
+          });
+          successes++;
+        } catch (ThrottleException e) {
+          throttles++;
+        } catch (Exception e) {
+          failures++;
+        }
+      }
+      return new Stats(successes, failures, throttles);
+    };
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      var futures = executor.invokeAll(IntStream.range(0, 50).mapToObj(i -> (task)).toList());
+
+      futures.forEach(future -> {
+        try {
+          var stats = future.get();
+          System.out.println(
+              "Successes: " + stats.successes + ", Failures: " + stats.failures + ", Throttles: " + stats.throttles);
+        } catch (ExecutionException | InterruptedException e) {
+          // Ignore exceptions
+        }
+      });
+    }
+  }
+
+  @Test
   void chainOfAttempts() {
     var operations = List.of(Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS,
         Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.FAILURE, Operation.SUCCESS,
@@ -314,8 +377,8 @@ class ThrottleTest {
         Operation.FAILURE, Operation.THROTTLE, Operation.WAIT, Operation.THROTTLE, Operation.THROTTLE,
         Operation.FAILURE, Operation.THROTTLE, Operation.WAIT,
         // Starts succeeding again, but still throttled
-        Operation.THROTTLE, Operation.THROTTLE, Operation.SUCCESS, Operation.THROTTLE, Operation.WAIT,
-        Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS);
+        Operation.THROTTLE, Operation.THROTTLE, Operation.THROTTLE, Operation.THROTTLE, Operation.WAIT,
+        Operation.THROTTLE, Operation.SUCCESS, Operation.THROTTLE, Operation.SUCCESS);
 
     runOperations(operations);
   }

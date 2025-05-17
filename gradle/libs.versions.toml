@@ -32,7 +32,6 @@ pitest = { module = "org.pitest:pitest", version.ref = "pitest" }
 pitest-accelerator-junit5 = { module = "com.groupcdg.pitest:pitest-accelerator-junit5", version.ref = "pitest-accelerator-junit5" }
 pitest-git-plugin = { module = "com.groupcdg:pitest-git-plugin", version.ref = "pitest-git-plugin" }
 pitest-junit5-plugin = { module = "org.pitest:pitest-junit5-plugin", version.ref = "pitest-junit5-plugin" }
-pitest-kotlin-plugin = { module = "com.groupcdg.pitest:pitest-kotlin-plugin", version.ref = "pitest-kotlin-plugin" }
 puppycrawl-checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugs" }
