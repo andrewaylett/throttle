@@ -1,0 +1,91 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_install_hook_types:
+- pre-commit
+- pre-push
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  - id: trailing-whitespace
+    exclude: \.snap$
+  - id: end-of-file-fixer
+    exclude: ^\.idea
+  - id: check-case-conflict
+  - id: check-merge-conflict
+  - id: check-yaml
+  - id: check-toml
+  - id: check-xml
+  - id: check-added-large-files
+  - id: forbid-submodules
+  - id: mixed-line-ending
+- repo: https://github.com/google/yamlfmt
+  rev: v0.16.0
+  hooks:
+  - id: yamlfmt
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.7.7
+  hooks:
+  - id: actionlint
+- repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+  rev: 3.2.1
+  hooks:
+  - id: editorconfig-checker
+    exclude: LICENSE|gradlew.bat|^\.idea
+- repo: https://github.com/python-jsonschema/check-jsonschema
+  rev: 0.33.0
+  hooks:
+  - id: check-github-workflows
+  - id: check-renovate
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.5.5
+  hooks:
+  - id: insert-license
+    # Skipped in CI because we don't want to update all files even if unchanged
+    stages:
+    - pre-commit
+    - pre-push
+    types:
+    - java
+    args:
+    - --use-current-year
+    - --license-filepath
+    - .license-header
+    - --comment-style
+    - '/*| *| */'
+  - id: insert-license
+    # Like the above, but not updating to the latest year
+    stages:
+    - pre-merge-commit
+    types:
+    - java
+    args:
+    - --allow-past-years
+    - --license-filepath
+    - .license-header
+    - --comment-style
+    - '/*| *| */'
+- repo: local
+  hooks:
+  - id: spotless
+    name: Spotless
+    stages:
+    - pre-commit
+    - pre-push
+    language: system
+    pass_filenames: false
+    entry: ./gradlew spotlessApply
+    types_or:
+    - java
+    - kotlin
+  - id: check
+    name: Gradle Check
+    stages:
+    - pre-commit
+    - pre-push
+    language: system
+    pass_filenames: false
+    entry: ./gradlew check
+    types_or:
+    - java
+    - kotlin

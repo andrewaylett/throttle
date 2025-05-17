@@ -2,6 +2,7 @@
 arcmutate = "1.2.2"
 checkerframework = "3.49.2"
 checkstyle = "10.23.1"
+guava = "33.4.8-jre"
 hamcrest = "3.0"
 jetbrains = "26.0.2"
 jspecify = "1.0.0"
@@ -20,6 +21,7 @@ spotbugs = "4.9.3"
 arcmutate-base = { module = "com.groupcdg.arcmutate:base", version.ref = "arcmutate" }
 checkerframework = { module = "org.checkerframework:checker", version.ref = "checkerframework" }
 checkerframework-qual = { module = "org.checkerframework:checker-qual", version.ref = "checkerframework" }
+guava-testlib = { module = "com.google.guava:guava-testlib", version.ref = "guava" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }

@@ -1,0 +1,18 @@
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.java]
+ij_java_names_count_to_use_import_on_demand = 999
+
+[*.xml]
+indent_size = 4
+ij_xml_align_attributes = false
+ij_xml_align_text = false
+ij_xml_attribute_wrap = normal
+
+[*.{yml,yaml}]
+ij_yaml_indent_sequence_value = false

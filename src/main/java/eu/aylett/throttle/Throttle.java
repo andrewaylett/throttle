@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Andrew Aylett
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package eu.aylett.throttle;
 
 import java.security.SecureRandom;
@@ -10,6 +26,8 @@ import java.util.function.BiFunction;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import static eu.aylett.throttle.SneakyThrows.sneakyThrow;
 
 public class Throttle {
   private final double overhead;
@@ -40,6 +58,7 @@ public class Throttle {
       }
     }
 
+    var success = false;
     try {
       var f = failures.getAcquire();
       if (f > 0) {
@@ -55,15 +74,18 @@ public class Throttle {
         }
       }
       result = callable.call();
-    } catch (Throwable e) {
-      failures.incrementAndGet();
-      queue.offer(new ThrottleEntry(false, clock));
-      throw e;
-    }
 
-    successes.incrementAndGet();
-    queue.offer(new ThrottleEntry(true, clock));
-    return result;
+      success = true;
+      successes.incrementAndGet();
+      queue.offer(new ThrottleEntry(true, clock));
+
+      return result;
+    } finally {
+      if (!success) {
+        failures.incrementAndGet();
+        queue.offer(new ThrottleEntry(false, clock));
+      }
+    }
   }
 
   public void attempt(Runnable runnable) {
@@ -72,20 +94,16 @@ public class Throttle {
         runnable.run();
         return null;
       });
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new UnexpectedCheckedException(e);
+      throw sneakyThrow(e);
     }
   }
 
   public <T> T attempt(Supplier<T> supplier) {
     try {
       return checkedAttempt(supplier::get);
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new UnexpectedCheckedException(e);
+      throw sneakyThrow(e);
     }
   }
 

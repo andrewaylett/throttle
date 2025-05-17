@@ -1,0 +1,42 @@
+#
+# Run pitest and update github in a single step. Until and unless I get outside contributions, this suffices
+#
+name: Run Pitest
+on:
+  push:
+    branches: ["renovate/*"]
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  pull-request-ci:
+    # Only run on PRs from the repo. PRs from forks will fail due to lack of permissions and
+    # must use the two stage process
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      with:
+        fetch-depth: 2
+
+    - name: Validate Gradle Wrapper
+      uses: gradle/actions/wrapper-validation@06832c7b30a0129d7fb559bcc6e43d26f6374244 # v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@06832c7b30a0129d7fb559bcc6e43d26f6374244 # v4
+
+    - name: Execute Pitest
+      run: ./gradlew --no-configuration-cache pitest-github
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}

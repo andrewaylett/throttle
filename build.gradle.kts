@@ -27,21 +27,24 @@ repositories {
   mavenCentral()
 }
 
-val internal: Configuration by configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-}
+val internal: Configuration by
+    configurations.creating {
+      isCanBeConsumed = true
+      isCanBeResolved = false
+    }
 
-val mockito: Configuration by configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-}
+val mockito: Configuration by
+    configurations.creating {
+      isCanBeConsumed = true
+      isCanBeResolved = false
+    }
 
-val mockitoRuntimeOnly: Configuration by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-  extendsFrom(mockito)
-}
+val mockitoRuntimeOnly: Configuration by
+    configurations.creating {
+      isCanBeConsumed = false
+      isCanBeResolved = true
+      extendsFrom(mockito)
+    }
 
 dependencies {
   implementation(libs.checkerframework.qual)
@@ -50,6 +53,7 @@ dependencies {
   implementation(libs.spotbugs.annotations)
   testImplementation(libs.hamcrest)
   testImplementation(libs.mockito)
+  testImplementation(libs.guava.testlib)
 
   checkerFramework(libs.checkerframework)
 
@@ -64,9 +68,7 @@ dependencies {
   internal(libs.pitest)
   internal(libs.pitest.junit5.plugin)
   internal(libs.puppycrawl.checkstyle)
-  mockito(libs.mockito) {
-      isTransitive = false
-  }
+  mockito(libs.mockito) { isTransitive = false }
 }
 
 java {
@@ -83,9 +85,7 @@ testing {
           useJUnitJupiter(internal.dependencies.find { it.group == "org.junit.jupiter" }!!.version)
           targets {
             configureEach {
-              testTask.configure {
-                jvmArgs("-javaagent:${mockitoRuntimeOnly.asPath}")
-              }
+              testTask.configure { jvmArgs("-javaagent:${mockitoRuntimeOnly.asPath}") }
             }
           }
         }
