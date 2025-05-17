@@ -69,6 +69,8 @@ public class Throttle {
         if (ratio <= 1.0) {
           var sample = randomSource.getAsDouble();
           if (sample >= ratio) {
+            // Don't record this as a failure, we didn't even try
+            success = true;
             throw new ThrottleException("Throttle limit exceeded");
           }
         }

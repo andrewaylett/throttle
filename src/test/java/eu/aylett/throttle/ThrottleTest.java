@@ -16,6 +16,7 @@
 
 package eu.aylett.throttle;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.invocation.InvocationOnMock;
@@ -29,6 +30,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -75,6 +78,10 @@ class ThrottleTest {
 
     // Third call should be throttled
     assertThrows(ThrottleException.class, () -> throttle.checkedAttempt(() -> "should not run"));
+  }
+
+  private enum Operation {
+    SUCCESS, FAILURE, THROTTLE, WAIT,
   }
 
   static class DummyClock extends Clock {
@@ -221,6 +228,24 @@ class ThrottleTest {
   }
 
   @Test
+  void testWrapFunction() {
+    var throttle = new Throttle();
+    Function<Integer, String> original = (i) -> "wrapped" + i;
+    var wrapped = throttle.wrap(original);
+    Assertions.assertNotSame(original, wrapped);
+    Assertions.assertEquals("wrapped1", wrapped.apply(1));
+  }
+
+  @Test
+  void testWrapBiFunction() {
+    var throttle = new Throttle();
+    BiFunction<Integer, Integer, String> original = (i, j) -> "wrapped" + i + j;
+    var wrapped = throttle.wrap(original);
+    Assertions.assertNotSame(original, wrapped);
+    Assertions.assertEquals("wrapped13", wrapped.apply(1, 3));
+  }
+
+  @Test
   void testWrapMultipleFunctionsWithSingleThrottle() {
     var throttle = new Throttle();
 
@@ -280,6 +305,31 @@ class ThrottleTest {
 
   @Test
   void chainOfAttempts() {
+    var operations = List.of(Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS,
+        Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.FAILURE, Operation.SUCCESS,
+        Operation.SUCCESS, Operation.WAIT,
+        // Starts failing after 68s
+        Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.WAIT, Operation.FAILURE,
+        Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.WAIT, Operation.FAILURE, Operation.FAILURE,
+        Operation.FAILURE, Operation.THROTTLE, Operation.WAIT, Operation.THROTTLE, Operation.THROTTLE,
+        Operation.FAILURE, Operation.THROTTLE, Operation.WAIT,
+        // Starts succeeding again, but still throttled
+        Operation.THROTTLE, Operation.THROTTLE, Operation.SUCCESS, Operation.THROTTLE, Operation.WAIT,
+        Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS);
+
+    runOperations(operations);
+  }
+
+  @Test
+  void recoversFromFailures() {
+    var operations = List.of(Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.FAILURE,
+        Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.THROTTLE, Operation.WAIT,
+        Operation.WAIT, Operation.WAIT, Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS,
+        Operation.SUCCESS, Operation.SUCCESS);
+    runOperations(operations);
+  }
+
+  private static void runOperations(List<@NotNull Operation> operations) {
     var clock = mock(InstantSource.class);
 
     var instantAnswer = new Answer<Instant>() {
@@ -295,10 +345,6 @@ class ThrottleTest {
       }
     };
 
-    enum Operation {
-      SUCCESS, FAILURE, THROTTLE, WAIT,
-    }
-
     when(clock.instant()).thenAnswer(instantAnswer);
 
     var throttle = new Throttle(2.0, clock, new Random(42)::nextDouble);
@@ -311,18 +357,6 @@ class ThrottleTest {
     Runnable assertThrottled = () -> {
       var ignored = assertThrows(ThrottleException.class, assertAttempted::run);
     };
-
-    var operations = List.of(Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS,
-        Operation.WAIT, Operation.SUCCESS, Operation.SUCCESS, Operation.WAIT, Operation.FAILURE, Operation.SUCCESS,
-        Operation.SUCCESS, Operation.WAIT,
-        // Starts failing after 68s
-        Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.WAIT, Operation.FAILURE,
-        Operation.FAILURE, Operation.FAILURE, Operation.FAILURE, Operation.WAIT, Operation.FAILURE, Operation.FAILURE,
-        Operation.FAILURE, Operation.THROTTLE, Operation.WAIT,
-        // Starts succeeding again, but still throttled
-        Operation.THROTTLE, Operation.THROTTLE, Operation.SUCCESS, Operation.THROTTLE, Operation.WAIT,
-        Operation.THROTTLE, Operation.THROTTLE, Operation.THROTTLE, Operation.THROTTLE, Operation.WAIT,
-        Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS, Operation.SUCCESS);
 
     var i = 0;
     for (var op : operations) {
