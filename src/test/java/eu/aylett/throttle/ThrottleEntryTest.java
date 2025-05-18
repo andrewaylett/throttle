@@ -25,7 +25,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.InstantSource;
 import java.time.ZoneId;
+import java.util.concurrent.Delayed;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.comparesEqualTo;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,20 +41,7 @@ class ThrottleEntryTest {
   void equalityAndHashcodeTest() {
 
     var changingClock = mock(InstantSource.class);
-
-    var instantAnswer = new Answer<Instant>() {
-      public void plusSeconds(int i) {
-        now = now.plusSeconds(i);
-      }
-
-      public Instant now = Instant.parse("2024-01-01T00:00:00Z");
-
-      @Override
-      public Instant answer(InvocationOnMock invocation) {
-        return now;
-      }
-    };
-
+    var instantAnswer = new InstantAnswer();
     when(changingClock.instant()).thenAnswer(instantAnswer);
 
     var tester = new EqualsTester();
@@ -66,5 +60,83 @@ class ThrottleEntryTest {
     tester.addEqualityGroup(new ThrottleEntry(false, clock3), new ThrottleEntry(false, changingClock));
 
     tester.testEquals();
+  }
+
+  @Test
+  void compareToSelf() {
+    var clock = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var entry = new ThrottleEntry(true, clock);
+    assertThat(entry, comparesEqualTo(entry));
+  }
+
+  @Test
+  void compareToSameExpiry() {
+    var clock = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var entry1 = new ThrottleEntry(true, clock);
+    var entry2 = new ThrottleEntry(false, clock);
+    assertThat(entry1, comparesEqualTo(entry2));
+  }
+
+  @Test
+  void compareToDifferentExpiry() {
+    var changingClock = mock(InstantSource.class);
+    var instantAnswer = new InstantAnswer();
+    when(changingClock.instant()).thenAnswer(instantAnswer);
+
+    var entry1 = new ThrottleEntry(true, changingClock);
+    instantAnswer.plusSeconds(1);
+    var entry2 = new ThrottleEntry(false, changingClock);
+    assertThat(entry1, lessThan(entry2));
+  }
+
+  @Test
+  void compareToOtherDelayed() {
+    var clock1 = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var entry1 = new ThrottleEntry(true, clock1);
+    var entry2 = mock(Delayed.class);
+    when(entry2.getDelay(any())).thenReturn(80000L);
+    assertThat(entry1, lessThan(entry2));
+  }
+
+  @Test
+  void hashCodeUsesSuccess() {
+    var clock1 = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var entry1 = new ThrottleEntry(true, clock1);
+    var entry2 = new ThrottleEntry(false, clock1);
+    assertThat(entry1.hashCode(), not(equalTo(entry2.hashCode())));
+  }
+
+  @Test
+  void hashCodeUsesExpiry() {
+    var changingClock = mock(InstantSource.class);
+    var instantAnswer = new InstantAnswer();
+    when(changingClock.instant()).thenAnswer(instantAnswer);
+
+    var entry1 = new ThrottleEntry(true, changingClock);
+    instantAnswer.plusSeconds(1);
+    var entry2 = new ThrottleEntry(true, changingClock);
+    assertThat(entry1.hashCode(), not(equalTo(entry2.hashCode())));
+  }
+
+  @Test
+  void hashCodeDoesNotUseClock() {
+    var clock1 = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var clock2 = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneId.of("UTC"));
+    var entry1 = new ThrottleEntry(true, clock1);
+    var entry2 = new ThrottleEntry(true, clock2);
+    assertThat(entry1.hashCode(), equalTo(entry2.hashCode()));
+  }
+
+  private static class InstantAnswer implements Answer<Instant> {
+    public void plusSeconds(int i) {
+      now = now.plusSeconds(i);
+    }
+
+    public Instant now = Instant.parse("2024-01-01T00:00:00Z");
+
+    @Override
+    public Instant answer(InvocationOnMock invocation) {
+      return now;
+    }
   }
 }

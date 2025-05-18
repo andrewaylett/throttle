@@ -19,6 +19,8 @@ package eu.aylett.throttle;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.opentest4j.AssertionFailedError;
@@ -40,6 +42,7 @@ import java.util.stream.IntStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
+import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.Mockito.mock;
@@ -310,8 +313,14 @@ class ThrottleTest {
   }
 
   @Test
+  void needsOverheadMoreThanOne() {
+    assertThrows(IllegalArgumentException.class, () -> new Throttle(0.5, Clock.systemUTC(), () -> 1.0));
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {0.01, 0.1, 0.25, 0.5, 0.7, 0.9, 0.99})
   @SuppressWarnings("return")
-  void soakTest() throws InterruptedException {
+  void soakTest(double failureRate) throws InterruptedException {
     var baseInstant = Instant.parse("2024-01-01T00:00:00Z");
     var startInstant = Instant.now();
     // Clock that runs 3600x faster than real time
@@ -335,10 +344,12 @@ class ThrottleTest {
       var throttles = 0;
       while (fastClock.instant().isBefore(stopAt)) {
         try {
+          // noinspection BusyWait
+          Thread.sleep(1);
           throttle.checkedAttempt(() -> {
             // Simulate some work
             Thread.sleep(1);
-            if (random.nextBoolean()) {
+            if (random.nextDouble() <= failureRate) {
               throw new RuntimeException("deliberate fail");
             }
             return null;
@@ -369,7 +380,10 @@ class ThrottleTest {
       // successes and failures.
 
       var successRatio = (double) stats.successes / (stats.successes + stats.failures);
-      assertThat(successRatio, closeTo(0.5, 0.1));
+      assertThat(successRatio, closeTo(1.0 - failureRate, 0.1));
+      var throttleRatio = (double) stats.throttles / (stats.successes + stats.failures);
+      var expectedApprox = 100 * Math.max(0, (2 * failureRate) - 1);
+      assumeThat(throttleRatio, closeTo(expectedApprox, 0.1 + 0.4 * expectedApprox));
     }
   }
 
