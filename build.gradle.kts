@@ -1,5 +1,6 @@
 @file:Suppress("UnstableApiUsage")
 
+import okio.ByteString.Companion.decodeBase64
 import org.checkerframework.gradle.plugin.CheckerFrameworkExtension
 import org.gradle.kotlin.dsl.configure
 
@@ -16,6 +17,7 @@ plugins {
   id("info.solidsoft.pitest") version "1.15.0"
   id("com.groupcdg.pitest.github") version "1.0.7"
   id("com.github.spotbugs") version "6.1.11"
+  id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
 group = "eu.aylett"
@@ -80,6 +82,7 @@ java {
 testing {
   suites {
     // Configure the built-in test suite
+    @Suppress("unused")
     val test by
         getting(JvmTestSuite::class) {
           // Use JUnit Jupiter test framework
@@ -136,7 +139,7 @@ tasks.named("check").configure { dependsOn(tasks.named("spotlessCheck")) }
 val isCI = providers.environmentVariable("CI").isPresent
 
 if (!isCI) {
-  tasks.named("spotlessCheck").configure { dependsOn(tasks.named("spotlessApply")) }
+  tasks.named("spotlessJavaCheck").configure { dependsOn(tasks.named("spotlessJavaApply")) }
 }
 
 val historyLocation = projectDir.resolve("build/pitest/history")
@@ -184,11 +187,27 @@ val printPitestReportLocation by
 
 tasks.named("pitest").configure { finalizedBy(printPitestReportLocation) }
 
+val checkPublishVersion by
+    tasks.registering {
+      doNotTrackState("Either does nothing or fails the build")
+      doFirst {
+        val versionDetails = aylett.versions.versionDetails()
+        if (!versionDetails.isCleanTag) {
+          logger.error("Version details is {}", versionDetails)
+          throw IllegalStateException(
+              "Can't publish a plugin with a version (${versionDetails.version}) that's not a clean tag",
+          )
+        }
+      }
+    }
+
+tasks.withType<PublishToMavenRepository>().configureEach { dependsOn(checkPublishVersion) }
+
 publishing {
   repositories {
     maven {
       name = "GitHubPackages"
-      url = uri("https://maven.pkg.github.com/andrewaylett/arc")
+      url = uri("https://maven.pkg.github.com/andrewaylett/throttle")
       credentials {
         username = System.getenv("GITHUB_ACTOR")
         password = System.getenv("GITHUB_TOKEN")
@@ -197,6 +216,51 @@ publishing {
   }
 }
 
+nexusPublishing {
+  repositories {
+    sonatype {
+      username = System.getenv("OSSRH_TOKEN_USER")
+      password = System.getenv("OSSRH_TOKEN_PASSWORD")
+    }
+  }
+}
+
+publishing.publications.withType<MavenPublication>().configureEach {
+  pom {
+    name.set("Throttle")
+    description.set("Don't call a service when we know we'll overload it.")
+    url.set("https://throttle.aylett.eu/")
+    licenses {
+      license {
+        name.set("Apache-2.0")
+        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+      }
+    }
+    developers {
+      developer {
+        id.set("aylett")
+        name.set("Andrew Aylett")
+        email.set("andrew@aylett.eu")
+        organization.set("Andrew Aylett")
+        organizationUrl.set("https://www.aylett.co.uk/")
+      }
+    }
+    scm {
+      connection.set("scm:git:https://github.com/andrewaylett/throttle.git")
+      developerConnection.set("scm:git:ssh://git@github.com:andrewaylett/throttle.git")
+      url.set("https://github.com/andrewaylett/throttle/")
+    }
+  }
+}
+
+signing {
+  setRequired({ gradle.taskGraph.hasTask(":publishAllPublicationsToSonatypeRepository") })
+  val signingKey: String? = System.getenv("GPG_SIGNING_KEY")?.decodeBase64()?.utf8()
+  useInMemoryPgpKeys(signingKey, "")
+  sign(publishing.publications)
+}
+
+@Suppress("unused")
 val printCurrentVersion by
     tasks.registering {
       group = "version"
