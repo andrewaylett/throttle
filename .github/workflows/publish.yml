@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Check out
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      with:
+        fetch-depth: 0 # so we can work out our version correctly
 
     - name: Validate Gradle Wrapper
       uses: gradle/actions/wrapper-validation@06832c7b30a0129d7fb559bcc6e43d26f6374244 # v4
@@ -27,8 +29,20 @@ jobs:
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@06832c7b30a0129d7fb559bcc6e43d26f6374244 # v4
+      with:
+        dependency-graph: 'generate-and-submit'
+        build-scan-publish: 'true'
+        build-scan-terms-of-use-agree: 'yes'
+        build-scan-terms-of-use-url: https://gradle.com/help/legal-terms-of-use
 
     - name: Publish to GitHub Packages
-      run: ./gradlew publish
+      run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish to OSSRH
+      run: ./gradlew --no-configuration-cache -Dorg.gradle.unsafe.isolated-projects=false publishAllPublicationsToSonatypeRepository closeSonatypeStagingRepository
+      env:
+        OSSRH_TOKEN_USER: ${{ secrets.OSSRH_TOKEN_USER }}
+        OSSRH_TOKEN_PASSWORD: ${{ secrets.OSSRH_TOKEN_PASSWORD }}
+        GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
