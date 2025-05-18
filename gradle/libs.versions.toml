@@ -1,6 +1,6 @@
 [versions]
 arcmutate = "1.2.2"
-checkerframework = "3.49.2"
+checkerframework = "3.49.3"
 checkstyle = "10.23.1"
 guava = "33.4.8-jre"
 hamcrest = "3.0"
