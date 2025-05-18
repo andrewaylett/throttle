@@ -41,7 +41,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish to OSSRH
-      run: ./gradlew --no-configuration-cache -Dorg.gradle.unsafe.isolated-projects=false publishMavenJavaPublicationToSonatypeRepository closeSonatypeStagingRepository
+      run: ./gradlew --no-configuration-cache -Dorg.gradle.unsafe.isolated-projects=false publishMavenJavaPublicationToSonatypeRepository closeAndReleaseSonatypeStagingRepository
       env:
         OSSRH_TOKEN_USER: ${{ secrets.OSSRH_TOKEN_USER }}
         OSSRH_TOKEN_PASSWORD: ${{ secrets.OSSRH_TOKEN_PASSWORD }}
