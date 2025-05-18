@@ -37,3 +37,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### GitHub ###
+/dependency-graph-reports/

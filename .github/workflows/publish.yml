@@ -5,12 +5,12 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   checks: write
   packages: write
 
 jobs:
-  publish-plugins:
+  publish-package:
     runs-on: ubuntu-latest
     steps:
     - name: Check out
