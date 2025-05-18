@@ -24,13 +24,13 @@ result = sp.run(
 version = result.stdout.strip()
 cog.outl(f"""```groovy
 dependencies {{
-    implementation 'eu.aylett.throttle:throttle:{version}'
+    implementation 'eu.aylett:throttle:{version}'
 }}
 ```""")
 ]]] -->
 ```groovy
 dependencies {
-    implementation 'eu.aylett.throttle:throttle:0.1.1'
+    implementation 'eu.aylett:throttle:0.1.1'
 }
 ```
-<!-- [[[end]]] (checksum: 25a445457b5ec37c3e658a44437aec3a) -->
+<!-- [[[end]]] (checksum: ab31a7f78c21744bd749d849973b5ebd) -->
