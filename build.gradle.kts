@@ -267,7 +267,7 @@ publishing.publications {
 }
 
 signing {
-  setRequired({ gradle.taskGraph.hasTask(":publishAllPublicationsToSonatypeRepository") })
+  setRequired({ gradle.taskGraph.hasTask(":publishMavenJavaPublicationToSonatypeRepository") })
   val signingKey: String? = System.getenv("GPG_SIGNING_KEY")?.decodeBase64()?.utf8()
   useInMemoryPgpKeys(signingKey, "")
   sign(publishing.publications)
