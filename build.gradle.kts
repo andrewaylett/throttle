@@ -15,7 +15,7 @@ plugins {
   checkstyle
   id("info.solidsoft.pitest") version "1.15.0"
   id("com.groupcdg.pitest.github") version "1.0.7"
-  id("com.github.spotbugs") version "6.1.10"
+  id("com.github.spotbugs") version "6.1.11"
 }
 
 group = "eu.aylett"
