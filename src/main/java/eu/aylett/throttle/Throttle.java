@@ -44,18 +44,17 @@ public class Throttle {
   /**
    * A fully configurable throttle.
    * <p>
-   * You probably don't need to call this constructor
+   * You probably don't need to call this constructor directly.
    * </p>
    *
    * @param overhead
-   *          The ratio of attempts we'll make compared to successes we see.
-   *          Defaults to 2.0 on the no-arg constructor.
+   *          the ratio of attempts to successes; higher values allow more
+   *          attempts per success
    * @param clock
-   *          Used to get the current time, so we can expire old entries. Exposed
-   *          for testing.
+   *          the time source used for expiring old entries (mainly for testing)
    * @param randomSource
-   *          Used to determine whether we fail a particular attempt. Exposed for
-   *          testing.
+   *          the random number generator used to probabilistically throttle
+   *          attempts (mainly for testing)
    */
   public Throttle(double overhead, InstantSource clock, DoubleSupplier randomSource) {
     this.overhead = overhead;

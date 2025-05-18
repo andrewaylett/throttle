@@ -16,11 +16,39 @@
 
 package eu.aylett.throttle;
 
+/**
+ * Exception thrown when a throttle limit is exceeded.
+ * <p>
+ * Provides details about the number of successes, failures, and the allowed
+ * ratio at the time of exception.
+ * </p>
+ */
 public class ThrottleException extends RuntimeException {
+  /**
+   * The number of successful attempts in the current window.
+   */
   public final long successes;
+  /**
+   * The number of failed attempts in the current window.
+   */
   public final long failures;
+  /**
+   * The allowed ratio of attempts to successes at the time of exception.
+   */
   public final double ratio;
 
+  /**
+   * Constructs a new ThrottleException with details about the throttle state.
+   *
+   * @param message
+   *          the detail message
+   * @param successes
+   *          the number of successes in the current window
+   * @param failures
+   *          the number of failures in the current window
+   * @param ratio
+   *          the allowed ratio at the time of exception
+   */
   public ThrottleException(String message, long successes, long failures, double ratio) {
     super(message + " (last 60s: " + successes + " successes, " + failures + " failures, allowed ratio " + ratio + ")");
     this.successes = successes;
