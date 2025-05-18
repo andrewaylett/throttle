@@ -132,7 +132,11 @@ checkstyle {
   maxWarnings = 0
 }
 
-tasks.withType(JavaCompile::class) { mustRunAfter(tasks.named("spotlessJavaApply")) }
+tasks.withType(JavaCompile::class) { mustRunAfter(tasks.named("spotlessJavaCheck")) }
+
+tasks.named("prepareKotlinBuildScriptModel").configure {
+  mustRunAfter(tasks.named("spotlessKotlinGradleCheck"))
+}
 
 tasks.named("check").configure { dependsOn(tasks.named("spotlessCheck")) }
 
@@ -140,6 +144,9 @@ val isCI = providers.environmentVariable("CI").isPresent
 
 if (!isCI) {
   tasks.named("spotlessJavaCheck").configure { dependsOn(tasks.named("spotlessJavaApply")) }
+  tasks.named("spotlessKotlinGradleCheck").configure {
+    dependsOn(tasks.named("spotlessKotlinGradleApply"))
+  }
 }
 
 val historyLocation = projectDir.resolve("build/pitest/history")
@@ -216,6 +223,7 @@ publishing {
   }
 }
 
+@Suppress("unused")
 nexusPublishing {
   repositories {
     sonatype {
@@ -225,32 +233,37 @@ nexusPublishing {
   }
 }
 
-publishing.publications.withType<MavenPublication>().configureEach {
-  pom {
-    name.set("Throttle")
-    description.set("Don't call a service when we know we'll overload it.")
-    url.set("https://throttle.aylett.eu/")
-    licenses {
-      license {
-        name.set("Apache-2.0")
-        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+publishing.publications {
+  @Suppress("unused")
+  val mavenJava by
+      creating(MavenPublication::class) {
+        from(components["java"])
+        pom {
+          name.set("Throttle")
+          description.set("Don't call a service when we know we'll overload it.")
+          url.set("https://throttle.aylett.eu/")
+          licenses {
+            license {
+              name.set("Apache-2.0")
+              url.set("https://www.apache.org/licenses/LICENSE-2.0")
+            }
+          }
+          developers {
+            developer {
+              id.set("aylett")
+              name.set("Andrew Aylett")
+              email.set("andrew@aylett.eu")
+              organization.set("Andrew Aylett")
+              organizationUrl.set("https://www.aylett.co.uk/")
+            }
+          }
+          scm {
+            connection.set("scm:git:https://github.com/andrewaylett/throttle.git")
+            developerConnection.set("scm:git:ssh://git@github.com:andrewaylett/throttle.git")
+            url.set("https://github.com/andrewaylett/throttle/")
+          }
+        }
       }
-    }
-    developers {
-      developer {
-        id.set("aylett")
-        name.set("Andrew Aylett")
-        email.set("andrew@aylett.eu")
-        organization.set("Andrew Aylett")
-        organizationUrl.set("https://www.aylett.co.uk/")
-      }
-    }
-    scm {
-      connection.set("scm:git:https://github.com/andrewaylett/throttle.git")
-      developerConnection.set("scm:git:ssh://git@github.com:andrewaylett/throttle.git")
-      url.set("https://github.com/andrewaylett/throttle/")
-    }
-  }
 }
 
 signing {

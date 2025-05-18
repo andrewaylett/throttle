@@ -36,12 +36,12 @@ jobs:
         build-scan-terms-of-use-url: https://gradle.com/help/legal-terms-of-use
 
     - name: Publish to GitHub Packages
-      run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
+      run: ./gradlew publishMavenJavaPublicationToGitHubPackagesRepository
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish to OSSRH
-      run: ./gradlew --no-configuration-cache -Dorg.gradle.unsafe.isolated-projects=false publishAllPublicationsToSonatypeRepository closeSonatypeStagingRepository
+      run: ./gradlew --no-configuration-cache -Dorg.gradle.unsafe.isolated-projects=false publishMavenJavaPublicationToSonatypeRepository closeSonatypeStagingRepository
       env:
         OSSRH_TOKEN_USER: ${{ secrets.OSSRH_TOKEN_USER }}
         OSSRH_TOKEN_PASSWORD: ${{ secrets.OSSRH_TOKEN_PASSWORD }}
