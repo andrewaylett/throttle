@@ -16,7 +16,6 @@
 
 package eu.aylett.throttle;
 
-import com.google.common.math.Stats;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -39,6 +38,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.Mockito.mock;
@@ -354,15 +355,21 @@ class ThrottleTest {
     try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
       var futures = executor.invokeAll(IntStream.range(0, 50).mapToObj(i -> (task)).toList());
 
-      futures.forEach(future -> {
+      var stats = futures.stream().<Stats>map(future -> {
         try {
-          var stats = future.get();
-          System.out.println(
-              "Successes: " + stats.successes + ", Failures: " + stats.failures + ", Throttles: " + stats.throttles);
+          return future.get();
         } catch (ExecutionException | InterruptedException e) {
-          // Ignore exceptions
+          throw new RuntimeException(e);
         }
-      });
+      }).reduce(new Stats(0, 0, 0),
+          (a, b) -> new Stats(a.successes + b.successes, a.failures + b.failures, a.throttles + b.throttles));
+
+      // We expect some randomness,
+      // but with an overhead of 2.0 we should see roughly the same number of
+      // successes and failures.
+
+      var successRatio = (double) stats.successes / (stats.successes + stats.failures);
+      assertThat(successRatio, closeTo(0.5, 0.1));
     }
   }
 

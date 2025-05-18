@@ -33,7 +33,7 @@ import static eu.aylett.throttle.SneakyThrows.sneakyThrow;
  * A simple throttle that allows you to call a method, but only if the throttle
  * limit is not exceeded.
  */
-public class Throttle {
+public final class Throttle {
   private final double overhead;
   private final InstantSource clock;
   private final DoubleSupplier randomSource;
@@ -57,6 +57,9 @@ public class Throttle {
    *          attempts (mainly for testing)
    */
   public Throttle(double overhead, InstantSource clock, DoubleSupplier randomSource) {
+    if (overhead < 1.0) {
+      throw new IllegalArgumentException("Overhead must be at least 1.0");
+    }
     this.overhead = overhead;
     this.clock = clock;
     this.randomSource = randomSource;
