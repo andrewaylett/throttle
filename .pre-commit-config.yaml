@@ -89,3 +89,12 @@ repos:
     types_or:
     - java
     - kotlin
+  - # https://github.com/nedbat/cog/issues/21#issuecomment-1919626992
+    id: cog
+    name: cog (regenerate files)
+    language: python
+    additional_dependencies:
+    - cogapp
+    entry: bash -c 'git grep -lzF "[[[""cog" | xargs -0 cog -r -c -p "import subprocess as sp, re, os, sys, pathlib as pl, cog" "$@"'
+    pass_filenames: false
+    always_run: true

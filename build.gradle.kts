@@ -22,6 +22,8 @@ group = "eu.aylett"
 
 version = aylett.versions.gitVersion()
 
+val versionDetails = aylett.versions.versionDetails()
+
 repositories {
   // Use Maven Central for resolving dependencies.
   mavenCentral()
@@ -194,3 +196,9 @@ publishing {
     }
   }
 }
+
+val printCurrentVersion by
+    tasks.registering {
+      group = "version"
+      doLast { println(versionDetails.lastTag) }
+    }
