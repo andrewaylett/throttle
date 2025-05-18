@@ -180,7 +180,10 @@ pitest {
     failWhenNoMutations = true
   }
 
-  jvmArgs.add("--add-opens=java.base/java.lang=ALL-UNNAMED")
+  jvmArgs.addAll(
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "-javaagent:${mockitoRuntimeOnly.asPath}",
+  )
 }
 
 val pitestReportLocation: Provider<Directory> = project.layout.buildDirectory.dir("reports/pitest")
