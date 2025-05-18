@@ -30,7 +30,7 @@ dependencies {{
 ]]] -->
 ```groovy
 dependencies {
-    implementation 'eu.aylett.throttle:throttle:0.1.0'
+    implementation 'eu.aylett.throttle:throttle:0.1.1'
 }
 ```
-<!-- [[[end]]] (checksum: 353ebc522b6b2efa918751993988f80e) -->
+<!-- [[[end]]] (checksum: 25a445457b5ec37c3e658a44437aec3a) -->
