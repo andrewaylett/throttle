@@ -27,6 +27,10 @@ import java.util.Objects;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Represents a single attempt (success or failure) tracked by the throttle.
+ * Used internally for time-based expiration of attempts.
+ */
 final class ThrottleEntry implements Delayed {
   private static final TemporalAmount ONE_MINUTE = Duration.ofMinutes(1);
   public final boolean success;
