@@ -33,4 +33,4 @@ dependencies {
     implementation 'eu.aylett:throttle:0.1.1'
 }
 ```
-<!-- [[[end]]] (checksum: ab31a7f78c21744bd749d849973b5ebd) -->
+<!-- [[[end]]] -->
