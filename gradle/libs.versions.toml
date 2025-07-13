@@ -1,7 +1,7 @@
 [versions]
 arcmutate = "1.2.2"
 checkerframework = "3.49.5"
-checkstyle = "10.25.1"
+checkstyle = "10.26.1"
 guava = "33.4.8-jre"
 hamcrest = "3.0"
 jetbrains = "26.0.2"
