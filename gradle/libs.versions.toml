@@ -15,7 +15,7 @@ pitest-git-plugin = "1.1.4"
 pitest-junit5-plugin = "1.2.3"
 pitest-kotlin-plugin = "1.1.6"
 slf4j = "2.0.17"
-spotbugs = "4.9.3"
+spotbugs = "4.9.4"
 
 [libraries]
 arcmutate-base = { module = "com.groupcdg.arcmutate:base", version.ref = "arcmutate" }
