@@ -79,6 +79,6 @@ jobs:
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
       with:
         fetch-depth: 0 # so we can work out our version correctly
-    - uses: andrewaylett/pre-commit-action@3bdd800b531f9ad9245907bb38dee3aa4cbf50db # v4
+    - uses: andrewaylett/pre-commit-action@94b6c078c4dd92f1246b75fbfbd444c5f1812f07 # v4
       with:
         extra_args: '--all-files --hook-stage pre-merge-commit'
